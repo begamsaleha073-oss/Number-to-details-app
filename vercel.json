@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "*.py": {
+      "runtime": "vercel-python@3.9"
+    }
+  },
+  "routes": [
+    { "src": "/search.py", "dest": "/search.py" },
+    { "src": "/update_key.py", "dest": "/update_key.py" },
+    { "src": "/admin_verify_password.py", "dest": "/admin_verify_password.py" },
+    { "src": "/admin_get.py", "dest": "/admin_get.py" },
+    { "src": "/admin_change_password.py", "dest": "/admin_change_password.py" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LeakOSINT Cyber Tool</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  body {
+    font-family: 'Share Tech Mono', monospace;
+    background: radial-gradient(circle at center,#010a15 0%,#00040a 100%);
+    color: #00fff2;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+  header {
+    background: rgba(0,255,234,0.06);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,255,234,0.2);
+  }
+  header h1 {margin:0;font-size:1.3rem;letter-spacing:2px;}
+  #settingsBtn {background:none;border:none;color:#00fff2;font-size:1.5rem;cursor:pointer;transition:0.2s;}
+  #settingsBtn:hover {color:#00ffd5;transform:rotate(30deg);}
+  .container {max-width:800px;margin:auto;padding:20px;}
+  textarea,input,button {
+    width:100%;padding:10px;margin-top:10px;
+    background:rgba(0,255,234,0.05);
+    border:1px solid rgba(0,255,234,0.3);
+    border-radius:6px;color:#00fff2;font-family:inherit;
+  }
+  button {background:linear-gradient(90deg,#00ffa5,#00ccff);color:#000;font-weight:bold;cursor:pointer;border:none;margin-top:10px;}
+  button:hover {filter:brightness(1.2);}
+  pre {
+    background:rgba(0,255,234,0.05);
+    border:1px solid rgba(0,255,234,0.2);
+    padding:12px;border-radius:8px;
+    color:#00ffc6;white-space:pre-wrap;margin-top:10px;
+  }
+  .warning {
+    background:rgba(255,0,0,0.1);
+    border-left:4px solid #ff3b3b;
+    padding:10px;color:#ff9c9c;margin-top:15px;font-size:0.9rem;
+  }
+  #adminPanel {
+    display:none;
+    background:rgba(0,255,234,0.05);
+    border:1px solid rgba(0,255,234,0.2);
+    border-radius:10px;padding:15px;margin-top:15px;
+  }
+  .muted {color:#88fff7;font-size:0.9rem}
+  hr {border:none;border-top:1px solid rgba(0,255,234,0.15);margin:15px 0;}
+</style>
+</head>
+<body>
+<header>
+  <h1>LEAK-OSINT // CYBER TOOL</h1>
+  <button id="settingsBtn">⚙</button>
+</header>
+
+<div class="container">
+  <!-- User section -->
+  <section>
+    <label>Enter Query:</label>
+    <textarea id="query" placeholder="Enter email, phone, or username..."></textarea>
+    <button id="fetchBtn">⚡ Fetch Data</button>
+    <div id="status" class="muted"></div>
+    <pre id="output">Awaiting query...</pre>
+    <div class="warning">
+      ⚠ This tool was created by <strong>Happy</strong>. Please use it only for <em>education</em> and <em>investigation</em>.  
+      Do not use it for illegal purposes — if you do, <strong>you will be responsible.</strong>
+    </div>
+  </section>
+
+  <!-- Admin panel -->
+  <section id="adminPanel">
+    <h2>ADMIN SETTINGS</h2>
+    <label>Admin Password</label>
+    <input id="adminPassword" type="password" placeholder="Admin password">
+    <label>New API Token</label>
+    <input id="newToken" type="text" placeholder="Paste new API token">
+    <button id="updateTokenBtn">Update API Token (temporary)</button>
+    <button id="checkTokenBtn">Check Token</button>
+    <div id="adminStatus" class="muted"></div>
+    <hr>
+    <h3>Change Admin Password</h3>
+    <label>Current Password</label>
+    <input id="curPass" type="password">
+    <label>New Password</label>
+    <input id="newPass" type="password">
+    <button id="changePassBtn">Change Password</button>
+    <div id="passStatus" class="muted"></div>
+  </section>
+</div>
+
+<script>
+const ADMIN_PASSWORD = "Happy@5278"; // frontend prompt fallback; server verifies on Vercel if implemented
+
+async function apiPost(path, data){
+  const res = await fetch(path, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(data)
+  });
+  const j = await res.json().catch(()=>({error:"Invalid JSON"}));
+  return {ok: res.ok, status: res.status, body: j};
+}
+
+// Search
+document.getElementById("fetchBtn").addEventListener("click", async ()=>{
+  const q = document.getElementById("query").value.trim();
+  const out = document.getElementById("output");
+  const st = document.getElementById("status");
+  if(!q){ st.textContent = "Please enter a query."; return; }
+  out.textContent = "Fetching data...";
+  st.textContent = "";
+  try{
+    const resp = await apiPost("/search.py", {query: q});
+    if(!resp.ok){
+      st.innerHTML = '<span style="color:#ff6b6b;">Error: ' + (resp.body && resp.body.error ? resp.body.error : ('HTTP ' + resp.status)) + '</span>';
+    } else {
+      st.textContent = "✅ Data fetched successfully";
+    }
+    out.textContent = JSON.stringify(resp.body, null, 2);
+  }catch(e){
+    out.textContent = "";
+    st.innerHTML = '<span style="color:#ff6b6b;">Request failed: ' + e.message + '</span>';
+  }
+});
+
+// Settings button -> prompt and verify via server
+document.getElementById("settingsBtn").addEventListener("click", async ()=>{
+  const pwd = prompt("Enter admin password:");
+  if(!pwd) return;
+  // verify with server (if verify endpoint exists); fallback to local check
+  try{
+    const resp = await apiPost("/admin_verify_password.py", {password: pwd});
+    if(resp.ok && resp.body && resp.body.ok){
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("adminPassword").value = pwd;
+      alert("Admin verified ✅");
+      return;
+    }
+  }catch(e){}
+  if(pwd === ADMIN_PASSWORD){
+    document.getElementById("adminPanel").style.display = "block";
+    document.getElementById("adminPassword").value = pwd;
+    alert("Admin mode (local) ✅");
+  } else {
+    alert("❌ Incorrect password!");
+  }
+});
+
+// Admin: update token (note: Vercel cannot persist file; after deployment set env var)
+document.getElementById("updateTokenBtn").addEventListener("click", async ()=>{
+  const p = document.getElementById("adminPassword").value;
+  const t = document.getElementById("newToken").value;
+  const st = document.getElementById("adminStatus");
+  if(!p){ st.textContent = "Enter admin password above."; return; }
+  st.textContent = "Updating (temporary)...";
+  try{
+    const resp = await apiPost("/update_key.py", {password: p, new_key: t});
+    if(!resp.ok) st.innerHTML = '<span style="color:#ff6b6b;">' + (resp.body && resp.body.error ? resp.body.error : 'Error') + '</span>';
+    else st.textContent = 'API key accepted (temporary). After deployment set LEAK_API_TOKEN in Vercel env vars for persistence.';
+  }catch(e){
+    st.innerHTML = '<span style="color:#ff6b6b;">Failed: ' + e.message + '</span>';
+  }
+});
+
+// Check token
+document.getElementById("checkTokenBtn").addEventListener("click", async ()=>{
+  const st = document.getElementById("adminStatus");
+  st.textContent = "Checking...";
+  try{
+    const res = await fetch("/admin_get.py");
+    const j = await res.json();
+    st.textContent = "token_set: " + j.token_set;
+  }catch(e){ st.textContent = "Error: " + e.message; }
+});
+
+// Change admin password (calls server if endpoint exists)
+document.getElementById("changePassBtn").addEventListener("click", async ()=>{
+  const old = document.getElementById("curPass").value;
+  const newp = document.getElementById("newPass").value;
+  const ps = document.getElementById("passStatus");
+  ps.textContent = "Changing...";
+  try{
+    const resp = await apiPost("/admin_change_password.py", {password: old, new_password: newp});
+    if(!resp.ok) ps.innerHTML = '<span style="color:#ff6b6b;">' + (resp.body && resp.body.error ? resp.body.error : 'Error') + '</span>';
+    else ps.textContent = "Password changed successfully.";
+  }catch(e){
+    ps.innerHTML = '<span style="color:#ff6b6b;">Failed: ' + e.message + '</span>';
+  }
+});
+</script>
+</body>
+</html>
